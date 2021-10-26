@@ -1,14 +1,17 @@
 # The base accumulo image to use for all components.
-accumuloImage: 347653770938.dkr.ecr.us-east-2.amazonaws.com/accumulo-s3:2.0.1
+accumuloImage: 123392370222.dkr.ecr.us-east-1.amazonaws.com/accumulo-s3:2.1.0
 imagePullPolicy: Always
 
 # Select anitAffinity as either hard or soft, default is hard
 antiAffinity: "soft"
 
 s3:
-  bucket: "accumulo.s3"
-  key:
-  secret:
+  bucket: "cnbevar-test"
+  key: 
+  secret: 
+  token: 
+  endpoint: http://s3.us-east-1.amazonaws.com
+  ssl_enabled: true
 
 accumulo:
   # run the init script on startup
@@ -43,13 +46,12 @@ accumulo:
         cpu: 2
     javaOpts:
       memory: "'-Xmx1536m' '-Xms1536m'"
-  volumes: "accS3nf://accumulo.s3/accumulo,accS3mo://accumulo.s3/accumulo-wal"
   username: "root"
   passwd: "root"
   instance_name: "s3"
 
 zookeeper:
-  host: zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local,zookeeper-1.zookeeper-headless.accumulo.svc.cluster.local,zookeeper-2.zookeeper-headless.accumulo.svc.cluster.local
+  host: zookeeper
   port: 2181
   containerPort: 2888
   electionPort: 3888

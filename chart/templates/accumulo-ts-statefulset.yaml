@@ -29,18 +29,18 @@ spec:
       terminationGracePeriodSeconds: 0
       initContainers:
       - name: accumulo-ts-wait
-        image: bash
+        image: {{ .Values.accumuloImage }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         command:
-        - "/usr/local/bin/bash"
+        - "/bin/bash"
         - "/tmp/accumulo-config/ts-wait.sh"
         resources:
           requests:
             memory: 256Mi
             cpu: 0.5
         volumeMounts:
-          - name: accumulo-config
-            mountPath: /tmp/accumulo-config
+        - name: accumulo-config
+          mountPath: /tmp/accumulo-config
       containers:
       - name: accumulo-ts
         image: {{ .Values.accumuloImage }}

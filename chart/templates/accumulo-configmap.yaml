@@ -9,26 +9,14 @@ metadata:
     heritage: {{ .Release.Service }}
 data:
   accumulo-env.sh: |
-    ## Accumulo logs directory. Referenced by logger config.
+    #! /usr/bin/env bash
+
     export ACCUMULO_LOG_DIR="${ACCUMULO_LOG_DIR:-${basedir}/logs}"
-    ## Hadoop installation
-    export HADOOP_HOME="${HADOOP_HOME:-/path/to/hadoop}"
-    ## Hadoop configuration
-    export HADOOP_CONF_DIR="${HADOOP_CONF_DIR:-${HADOOP_HOME}/etc/hadoop}"
-    ## Zookeeper installation
     export ZOOKEEPER_HOME="${ZOOKEEPER_HOME:-/path/to/zookeeper}"
 
-    ##########################
-    # Build CLASSPATH variable
-    ##########################
-
-    # Verify that Hadoop & Zookeeper installation directories exist
+    ## Verify that Hadoop & Zookeeper installation directories exist
     if [[ ! -d "$ZOOKEEPER_HOME" ]]; then
       echo "ZOOKEEPER_HOME=$ZOOKEEPER_HOME is not set to a valid directory in accumulo-env.sh"
-      exit 1
-    fi
-    if [[ ! -d "$HADOOP_HOME" ]]; then
-      echo "HADOOP_HOME=$HADOOP_HOME is not set to a valid directory in accumulo-env.sh"
       exit 1
     fi
 
@@ -38,18 +26,12 @@ data:
     else
       CLASSPATH="${conf}"
     fi
-
-    ZK_JARS=$(find "$ZOOKEEPER_HOME/lib/" -maxdepth 1 -name '*.jar' -not -name '*slf4j*' -not -name '*log4j*' | paste -sd:)
-    CLASSPATH="${CLASSPATH}:${lib}/*:${HADOOP_CONF_DIR}:${ZOOKEEPER_HOME}/lib/*:${ZK_JARS}:${HADOOP_HOME}/share/hadoop/client/*:${HADOOP_HOME}/share/hadoop/common/lib/*"
-    CLASSPATH="/opt/extralibs/*:${CLASSPATH}"
+    CLASSPATH="${CLASSPATH}:${lib}/*:${s3lib}/*:${ZOOKEEPER_HOME}/*"
+    CLASSPATH="${CLASSPATH}:${ZOOKEEPER_HOME}/lib/*"
     export CLASSPATH
 
-    ##################################################################
-    # Build JAVA_OPTS variable. Defaults below work but can be edited.
-    ##################################################################
-
     ## JVM options set for all processes. Extra options can be passed in by setting ACCUMULO_JAVA_OPTS to an array of options.
-    JAVA_OPTS=("${ACCUMULO_JAVA_OPTS[@]}"
+    JAVA_OPTS=($ACCUMULO_JAVA_OPTS
       '-XX:OnOutOfMemoryError=kill -9 %p'
       '-XX:-OmitStackTraceInFastThrow'
       '-Djava.net.preferIPv4Stack=true'
@@ -64,6 +46,8 @@ data:
       monitor) JAVA_OPTS=("${JAVA_OPTS[@]}" {{ .Values.accumulo.monitor.javaOpts.memory }}) ;;
       gc)      JAVA_OPTS=("${JAVA_OPTS[@]}" {{ .Values.accumulo.gc.javaOpts.memory }}) ;;
       tserver) JAVA_OPTS=("${JAVA_OPTS[@]}" {{ .Values.accumulo.tserver.javaOpts.memory }}) ;;
+      compaction-coordinator) JAVA_OPTS=("${JAVA_OPTS[@]}" '-Xmx512m' '-Xms512m') ;;
+      compactor) JAVA_OPTS=("${JAVA_OPTS[@]}" '-Xmx256m' '-Xms256m') ;;
       *)       JAVA_OPTS=("${JAVA_OPTS[@]}" '-Xmx256m' '-Xms64m') ;;
     esac
 
@@ -73,10 +57,11 @@ data:
       "-Daccumulo.application=${cmd}${ACCUMULO_SERVICE_INSTANCE}_$(hostname)"
       "-Daccumulo.metrics.service.instance=${ACCUMULO_SERVICE_INSTANCE}"
       "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
+      "-Dotel.service.name=${cmd}${ACCUMULO_SERVICE_INSTANCE}"
     )
 
     case "$cmd" in
-      monitor|gc|manager|master|tserver|tracer|compaction-coordinator|compactor)
+      monitor|gc|manager|master|tserver|compaction-coordinator|compactor)
         JAVA_OPTS=("${JAVA_OPTS[@]}" "-Dlog4j.configurationFile=log4j2-service.properties")
         ;;
       *)
@@ -85,40 +70,9 @@ data:
         ;;
     esac
 
-    export JAVA_OPTS
-
-    ############################
-    # Variables set to a default
-    ############################
-
     export MALLOC_ARENA_MAX=${MALLOC_ARENA_MAX:-1}
-    ## Add Hadoop native libraries to shared library paths given operating system
-    case "$(uname)" in
-      Darwin) export DYLD_LIBRARY_PATH="${HADOOP_HOME}/lib/native:${DYLD_LIBRARY_PATH}" ;;
-      *)      export LD_LIBRARY_PATH="${HADOOP_HOME}/lib/native:${LD_LIBRARY_PATH}" ;;
-    esac
-
-    ###############################################
-    # Variables that are optional. Uncomment to set
-    ###############################################
-
-    ## Specifies command that will be placed before calls to Java in accumulo script
-    # export ACCUMULO_JAVA_PREFIX=""
 
   accumulo.properties: |
-    instance.volumes={{ .Values.accumulo.volumes }}
-    
-    # Configure FS implementations to be used by Accumulo
-    #general.volume.chooser=org.apache.accumulo.core.spi.fs.PreferredVolumeChooser
-    general.volume.chooser=org.apache.accumulo.server.fs.PreferredVolumeChooser
-    general.custom.volume.preferred.default=accS3nf://{{ .Values.s3.bucket }}/accumulo
-    general.custom.volume.preferred.logger=accS3mo://{{ .Values.s3.bucket }}/accumulo-wal
-    
-    ## Use S3LogCloser
-    # 2.1.0 property
-    #manager.wal.closer.implementation=org.apache.accumulo.s3.manager.S3LogCloser
-    master.walog.closer.implementation=org.apache.accumulo.s3.manager.S3LogCloser
-
     ## Sets location of Zookeepers
     instance.zookeeper.host={{ .Values.zookeeper.host }}
 
@@ -128,11 +82,20 @@ data:
     ## Set to false if 'accumulo-util build-native' fails
     tserver.memory.maps.native.enabled=true
 
-    ## Trace user
-    trace.user=root
+    ## S3 specific deployment configurations
+    ## For S3 you must define volumes for accumulo and its write ahead logs. Replace the defaule instance volumes at the top
+    ## with the example below. Make sure the volumes match the general.custom.volume.preferred.default, and
+    ## general.custom.volume.preferred.logger property values below
+    instance.volumes=s3a://{{ .Values.s3.bucket }}/accumulo,s3a://{{ .Values.s3.bucket }}/accumulo-wal
 
-    ## Trace password
-    trace.password=secret
+    ## Define the S3 objects to use for recording accumulo and write ahead log data
+    general.custom.volume.preferred.default=s3a://{{ .Values.s3.bucket }}/accumulo
+    general.custom.volume.preferred.logger=s3a://{{ .Values.s3.bucket }}/accumulo-wal
+
+    ## The default deployment will use a RandomVolumeChooser and HadoopLogCloser and neither of which work when deploying to
+    ## S3. Remove the comments below to use the volume chooser and log closer that are compatible with S3
+    general.volume.chooser=org.apache.accumulo.core.spi.fs.PreferredVolumeChooser
+    manager.walog.closer.implementation=org.apache.accumulo.server.manager.recovery.S3LogCloser
 
   accumulo-client.properties: |
     instance.name={{ .Values.accumulo.instance_name }}
@@ -146,34 +109,44 @@ data:
     <configuration>
         <property>
             <name>fs.defaultFS</name>
-            <value>accS3nf://{{ .Values.s3.bucket }}</value>
+            <value>s3a://{{ .Values.s3.bucket }}</value>
         </property>
         <property>
-            <name>fs.accS3nf.impl</name>
-            <value>org.apache.accumulo.s3.file.AccumuloNoFlushS3FileSystem</value>
+            <name>fs.s3a.impl</name>
+            <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
         </property>
         <property>
-            <name>fs.accS3mo.impl</name>
-            <value>org.apache.accumulo.s3.file.AccumuloMultiObjectS3FileSystem</value>
+            <name>fs.s3a.downgrade.syncable.exceptions</name>
+            <value>true</value>
         </property>
-
+        {{- if .Values.s3.key -}}
         <property>
             <name>fs.s3a.access.key</name>
             <value>{{ .Values.s3.key }}</value>
         </property>
+        {{- end -}}
+        {{- if .Values.s3.secret -}}
         <property>
             <name>fs.s3a.secret.key</name>
             <value>{{ .Values.s3.secret }}</value>
         </property>
-
-        <!--<property>
-          <name>fs.s3a.endpoint</name>
-          <value>s3.us-east-2.amazonaws.com</value>
-        </property>
+        {{- end -}}
+        {{- if .Values.s3.token -}}
         <property>
-          <name>fs.s3a.connection.ssl.enabled</name>
-          <value>false</value>
-        </property>-->
+            <name>fs.s3a.session.token</name>
+            <value>{{ .Values.s3.token }}</value>
+        </property>
+        {{- end -}}
+        {{- if .Values.s3.endpoint -}}
+        <property>
+          <name>fs.s3a.endpoint</name>
+          <value>{{ .Values.s3.endpoint }}</value>
+        </property>
+        {{- end -}}
+        <property>
+            <name>fs.s3a.connection.ssl.enabled</name>
+            <value>{{ .Values.s3.ssl_enabled }}</value>
+        </property>
     </configuration>
 
   bootstrap.sh: |
@@ -183,19 +156,9 @@ data:
     CONFIG_DIR="/tmp/accumulo-config"
 
     # Copy accumulo config files from volume mount
-    for f in accumulo.properties accumulo-env.sh accumulo-client.properties; do
+    for f in accumulo.properties accumulo-env.sh accumulo-client.properties core-site.xml; do
       if [[ -e ${CONFIG_DIR}/$f ]]; then
         cp ${CONFIG_DIR}/$f /opt/accumulo/conf/$f
-      else
-        echo "ERROR: Could not find $f in $CONFIG_DIR"
-        exit 1
-      fi
-    done
-
-    # Copy hadoop/etc config files from volume mount
-    for f in core-site.xml; do
-      if [[ -e ${CONFIG_DIR}/$f ]]; then
-        cp ${CONFIG_DIR}/$f $HADOOP_HOME/etc/hadoop/$f
       else
         echo "ERROR: Could not find $f in $CONFIG_DIR"
         exit 1
