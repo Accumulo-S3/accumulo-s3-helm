@@ -1,5 +1,5 @@
 # The base accumulo image to use for all components.
-accumuloImage: 347653770938.dkr.ecr.us-east-2.amazonaws.com/accumulo-s3:2.0.1
+accumuloImage: 347653770938.dkr.ecr.us-east-2.amazonaws.com/accumulo-s3:endpoint
 imagePullPolicy: Always
 
 # Select anitAffinity as either hard or soft, default is hard
@@ -9,6 +9,8 @@ s3:
   bucket: "accumulo.s3"
   key:
   secret:
+  endpoint: http://192.168.58.87:9000
+  region: us-east-2
 
 accumulo:
   # run the init script on startup

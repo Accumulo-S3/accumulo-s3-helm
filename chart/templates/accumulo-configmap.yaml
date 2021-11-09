@@ -167,6 +167,19 @@ data:
             <value>{{ .Values.s3.secret }}</value>
         </property>
 
+        {{ if .Values.s3.endpoint }}
+        <property>
+            <name>fs.s3.endpoint</name>
+            <value>{{ .Values.s3.endpoint }}</value>
+        </property>
+        {{ end }}
+        {{ if .Values.s3.region }}
+        <property>
+            <name>fs.s3.region</name>
+            <value>{{ .Values.s3.region }}</value>
+        </property>
+        {{ end }}
+
         <!--<property>
           <name>fs.s3a.endpoint</name>
           <value>s3.us-east-2.amazonaws.com</value>
@@ -252,6 +265,7 @@ data:
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
+
     # only run init container once even with multiple managers, so on the first manager pod only
     if [[ "${HOSTNAME}" =~ "accumulo-manager-0" ]]; then
       if {{ .Values.accumulo.init }}; then
