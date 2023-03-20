@@ -10,7 +10,7 @@ s3:
   key: 
   secret: 
   token: 
-  endpoint: http://s3.us-east-1.amazonaws.com
+  endpoint: 
   ssl_enabled: true
 
 accumulo:
