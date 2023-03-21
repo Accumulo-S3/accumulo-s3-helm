@@ -24,8 +24,8 @@ spec:
     spec:
       dnsConfig:
         searches:
-        - {{ template "accumulo.fullname" . }}-manager-svc.accumulo.svc.cluster.local
-        - {{ template "accumulo.fullname" . }}-ts-svc.accumulo.svc.cluster.local
+        - {{ template "accumulo.fullname" . }}-manager-svc.{{ .Release.Namespace }}.svc.cluster.local
+        - {{ template "accumulo.fullname" . }}-ts-svc.{{ .Release.Namespace }}.svc.cluster.local
       affinity:
       terminationGracePeriodSeconds: 0
       initContainers:

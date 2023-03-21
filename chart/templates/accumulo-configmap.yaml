@@ -74,7 +74,7 @@ data:
 
   accumulo.properties: |
     ## Sets location of Zookeepers
-    instance.zookeeper.host={{ .Values.zookeeper.host }}
+    instance.zookeeper.host={{ .Values.zookeeper.host }}:{{ .Values.zookeeper.port }}
 
     ## Change secret before initialization. All Accumulo servers must have same secret
     instance.secret=DEFAULT
