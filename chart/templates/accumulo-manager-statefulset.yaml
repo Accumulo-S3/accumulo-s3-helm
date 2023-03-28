@@ -118,3 +118,15 @@ spec:
       - name: accumulo-config
         configMap:
           name: accumulo-configmap
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - {{ template "accumulo.fullname" . }}-manager
+                topologyKey: kubernetes.io/hostname
