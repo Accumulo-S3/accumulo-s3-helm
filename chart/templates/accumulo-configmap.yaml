@@ -119,30 +119,42 @@ data:
             <name>fs.s3a.downgrade.syncable.exceptions</name>
             <value>true</value>
         </property>
+
         {{- if .Values.s3.key -}}
         <property>
             <name>fs.s3a.access.key</name>
             <value>{{ .Values.s3.key }}</value>
         </property>
         {{- end -}}
+
         {{- if .Values.s3.secret -}}
         <property>
             <name>fs.s3a.secret.key</name>
             <value>{{ .Values.s3.secret }}</value>
         </property>
         {{- end -}}
+
         {{- if .Values.s3.token -}}
         <property>
             <name>fs.s3a.session.token</name>
             <value>{{ .Values.s3.token }}</value>
         </property>
         {{- end -}}
+
         {{- if .Values.s3.endpoint -}}
         <property>
           <name>fs.s3a.endpoint</name>
           <value>{{ .Values.s3.endpoint }}</value>
         </property>
         {{- end -}}
+
+        {{- if .Values.s3.endpoint -}}
+        <property>
+          <name>fs.s3a.path.style.access</name>
+          <value>{{ .Values.s3.path_style_access }}</value>
+        </property>
+        {{- end -}}
+
         <property>
             <name>fs.s3a.connection.ssl.enabled</name>
             <value>{{ .Values.s3.ssl_enabled }}</value>

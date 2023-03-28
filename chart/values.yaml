@@ -10,7 +10,8 @@ s3:
   key: 
   secret: 
   token: 
-  endpoint: 
+  endpoint:
+  path_style_access: 
   ssl_enabled: true
 
 accumulo:
