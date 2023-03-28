@@ -1,7 +1,7 @@
 FROM openjdk:11
 
 RUN apt update; \
-    apt install -y iproute2 build-essential wget maven vim;
+    apt install -y iproute2 build-essential wget netcat vim;
 
 ENV ACCUMULO_VERSION=2.1.0
 ENV HADOOP_VERSION=3.3.0

@@ -61,11 +61,8 @@ spec:
         - "/bin/bash"
         - "/tmp/accumulo-config/manager.sh"
         livenessProbe:
-          exec:
-            command:
-              - /bin/bash
-              - -c
-              - ps aux | grep "org.apache.accumulo.start.Main manager" | grep -v grep
+          tcpSocket:
+            port: 9999
           initialDelaySeconds: 30
           periodSeconds: 5
         resources:
@@ -86,11 +83,8 @@ spec:
         - "/bin/bash"
         - "/tmp/accumulo-config/monitor.sh"
         livenessProbe:
-          exec:
-            command:
-              - /bin/bash
-              - -c
-              - ps aux | grep "org.apache.accumulo.start.Main monitor" | grep -v grep
+          tcpSocket:
+            port: 9995
           initialDelaySeconds: 30
           periodSeconds: 5
         resources:
@@ -111,11 +105,8 @@ spec:
         - "/bin/bash"
         - "/tmp/accumulo-config/gc.sh"
         livenessProbe:
-          exec:
-            command:
-              - /bin/bash
-              - -c
-              - ps aux | grep "org.apache.accumulo.start.Main gc" | grep -v grep
+          tcpSocket:
+            port: 9998
           initialDelaySeconds: 30
           periodSeconds: 5
         resources:

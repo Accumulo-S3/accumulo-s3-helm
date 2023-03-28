@@ -54,11 +54,8 @@ spec:
         - "/bin/bash"
         - "/tmp/accumulo-config/tserver.sh"
         livenessProbe:
-          exec:
-            command:
-              - /bin/bash
-              - -c
-              - ps aux | grep "org.apache.accumulo.start.Main tserver" | grep -v grep
+          tcpSocket:
+            port: 9997
           initialDelaySeconds: 30
           periodSeconds: 5
         resources:
