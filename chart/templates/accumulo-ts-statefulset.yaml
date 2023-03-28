@@ -53,6 +53,14 @@ spec:
         command:
         - "/bin/bash"
         - "/tmp/accumulo-config/tserver.sh"
+        livenessProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -c
+              - ps aux | grep "org.apache.accumulo.start.Main tserver" | grep -v grep
+          initialDelaySeconds: 30
+          periodSeconds: 5
         resources:
 {{ toYaml .Values.accumulo.tserver.resources | indent 10 }}
         volumeMounts:

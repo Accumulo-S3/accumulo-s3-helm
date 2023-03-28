@@ -1,45 +1,27 @@
 FROM openjdk:11
 
 RUN apt update; \
-    apt install -y iproute2 build-essential wget maven;
+    apt install -y iproute2 build-essential wget maven vim;
 
-ENV ACCUMULO_VERSION=2.0.1
+ENV ACCUMULO_VERSION=2.1.0
 ENV HADOOP_VERSION=3.3.0
-ENV ZOOKEEPER_VERSION=3.7.0
+ENV ZOOKEEPER_VERSION=3.8.1
 ENV ACCUMULO_HOME=/opt/accumulo
-ENV HADOOP_HOME=/opt/hadoop
+ENV HADOOP_HOME=/opt/accumulo
 ENV ZOOKEEPER_HOME=/opt/zookeeper
 
-ARG ACCUMULO_RELEASE_URL=https://downloads.apache.org/accumulo/${ACCUMULO_VERSION}/accumulo-${ACCUMULO_VERSION}-bin.tar.gz
-ARG HADOOP_RELEASE_URL=https://downloads.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz
+ARG ACCUMULO_RELEASE_URL=https://github.com/Accumulo-S3/accumulo/releases/download/rel%2F2.1.0-s3/accumulo-${ACCUMULO_VERSION}-bin.tar.gz
 ARG ZOOKEEPER_RELEASE_URL=https://downloads.apache.org/zookeeper/zookeeper-${ZOOKEEPER_VERSION}/apache-zookeeper-${ZOOKEEPER_VERSION}-bin.tar.gz
-
-# TODO replace branch version with release version
-#ARG S3_FILESYSTEM_VERSION=2.0.1
-#ARG S3_FILESYSTEM_URL=https://github.com/Accumulo-S3/accumulo-s3-fs/archive/refs/tags/rel/${RELEASE_VERSION}.zip
-ARG S3_FILESYSTEM_BRANCH=2.0.1
-ARG S3_FILESYSTEM_URL=https://github.com/Accumulo-S3/accumulo-s3-fs/archive/${S3_FILESYSTEM_BRANCH}.zip
 
 WORKDIR /tmp
 
 # download and install accumulo along with its hadoop+zookeeper dependencies
 RUN wget ${ACCUMULO_RELEASE_URL}; \
-    wget ${HADOOP_RELEASE_URL}; \
     wget ${ZOOKEEPER_RELEASE_URL}; \
     tar -xf accumulo-${ACCUMULO_VERSION}-bin.tar.gz; \
-    tar -xf hadoop-${HADOOP_VERSION}.tar.gz; \
     tar -xf apache-zookeeper-${ZOOKEEPER_VERSION}-bin.tar.gz; \
     mv accumulo-${ACCUMULO_VERSION} ${ACCUMULO_HOME}; \
-    mv hadoop-${HADOOP_VERSION} ${HADOOP_HOME}; \
     mv apache-zookeeper-${ZOOKEEPER_VERSION}-bin ${ZOOKEEPER_HOME};
-
-# build the s3 filesystem jar
-RUN wget ${S3_FILESYSTEM_URL}; \
-    unzip ${S3_FILESYSTEM_BRANCH}.zip; \
-    cd accumulo-s3-fs-${S3_FILESYSTEM_BRANCH}; \
-    mvn clean package; \
-    mv target/*.jar ${ACCUMULO_HOME}/lib; \
-    cp /root/.m2/repository/com/amazonaws/aws-java-sdk-bundle/*/*.jar ${ACCUMULO_HOME}/lib
 
 # cleanup downloaded tar files
 RUN rm -rf /tmp/*;

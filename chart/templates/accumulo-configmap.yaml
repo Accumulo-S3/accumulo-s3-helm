@@ -198,29 +198,25 @@ data:
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
-    /opt/accumulo/bin/accumulo-service master start
-    tail -f /opt/accumulo/logs/*
+    /opt/accumulo/bin/accumulo manager
 
   tserver.sh: |
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
-    /opt/accumulo/bin/accumulo-service tserver start
-    tail -f /opt/accumulo/logs/*
+    /opt/accumulo/bin/accumulo tserver
 
   gc.sh: |
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
-    /opt/accumulo/bin/accumulo-service gc start
-    tail -f /opt/accumulo/logs/*
+    /opt/accumulo/bin/accumulo gc
 
   monitor.sh: |
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
-    /opt/accumulo/bin/accumulo-service monitor start
-    tail -f /opt/accumulo/logs/*
+    /opt/accumulo/bin/accumulo monitor
 
   init.sh: |
     #!/bin/bash

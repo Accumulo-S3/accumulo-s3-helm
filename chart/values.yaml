@@ -13,7 +13,10 @@ s3:
   endpoint:
   path_style_access: 
   ssl_enabled: true
-
+ingress:
+  enabled: false
+  dn:
+  path:
 accumulo:
   # run the init script on startup
   init: false
