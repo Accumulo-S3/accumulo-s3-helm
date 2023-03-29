@@ -1,0 +1,43 @@
+{{- $name := include "accumulo.name" . }}
+{{- $fullName := include "accumulo.fullname" . }}
+{{- $replicaCount := .Values.accumulo.manager.replicas | int }}
+{{- $root := . }}
+
+{{- range $i, $e := until $replicaCount }}
+{{- $targetPod := printf "%s-manager-%d" (printf "%s" $fullName) $i }}
+{{- $_ := set $ "targetPod" $targetPod }}
+apiVersion: v1
+kind: Service
+metadata:
+    name: {{ $targetPod }}
+    labels:
+        app: {{ $name }}
+        chart: {{ $root.Chart.Name }}-{{ $root.Chart.Version | replace "+" "_" }}
+        release: {{ $root.Release.Name }}
+        heritage: {{ $root.Release.Service }}
+        pod: {{ $targetPod }}
+        component: {{ $fullName }}-manager
+spec:
+    ipFamilies:
+        - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+        - name: ui
+          port: 9995
+          {{- if and ($root.Values.externalAccess.enabled) (eq $root.Values.externalAccess.service.type "NodePort") }}
+          nodePort: {{ index $root.Values.externalAccess.service.nodePorts $i }}
+          {{- end}}
+          protocol: TCP
+          targetPort: 9995
+    selector:
+        statefulset.kubernetes.io/pod-name: {{ $targetPod }}
+    sessionAffinity: None
+    {{- if and ($root.Values.externalAccess.enabled) (eq $root.Values.externalAccess.service.type "NodePort") }}
+    type: NodePort
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    {{- end}}
+status:
+    loadBalancer: {}
+---
+{{- end }}

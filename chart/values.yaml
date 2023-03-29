@@ -1,13 +1,17 @@
 # The base accumulo image to use for all components.
-accumuloImage: 123392370222.dkr.ecr.us-east-1.amazonaws.com/accumulo-s3:2.1.0
+accumuloImage: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.0
 imagePullPolicy: Always
 
-# Select anitAffinity as either hard or soft, default is hard
-antiAffinity: "soft"
-
+externalAccess:
+  enabled: false
+  service:
+    type: NodePort
+    nodePorts: # The nodePorts list must match the number of manager replicas in the deployment
+    - 30995
+    - 30996
 s3:
-  bucket: "cnbevar-test"
-  key: 
+  bucket: "accumulo"
+  key:
   secret: 
   token: 
   endpoint:
@@ -16,7 +20,7 @@ s3:
 ingress:
   enabled: false
   dn:
-  path:
+  path: /
 accumulo:
   # run the init script on startup
   init: false
