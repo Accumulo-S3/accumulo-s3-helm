@@ -46,6 +46,8 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-wal-storage
+          mountPath: /{{ .Values.s3.bucket }}/accumulo-wal
       containers:
       # manager
       - name: accumulo-manager
@@ -69,6 +71,8 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-wal-storage
+          mountPath: /{{ .Values.s3.bucket }}/accumulo-wal
       # monitor
       - name: accumulo-monitor
         image: {{ .Values.accumuloImage }}
@@ -113,10 +117,15 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-wal-storage
+          mountPath: /{{ .Values.s3.bucket }}/accumulo-wal
       volumes:
       - name: accumulo-config
         configMap:
           name: accumulo-configmap
+      - name: {{ template "accumulo.fullname" . }}-wal-storage
+        persistentVolumeClaim:
+          claimName: {{ template "accumulo.fullname" . }}-wal-storage
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

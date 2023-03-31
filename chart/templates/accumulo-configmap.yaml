@@ -74,7 +74,7 @@ data:
 
   accumulo.properties: |
     ## Sets location of Zookeepers
-    instance.zookeeper.host={{ .Values.zookeeper.host }}:{{ .Values.zookeeper.port }}
+    instance.zookeeper.host={{ .Values.zookeeper.host }}
 
     ## Change secret before initialization. All Accumulo servers must have same secret
     instance.secret=DEFAULT
@@ -86,16 +86,16 @@ data:
     ## For S3 you must define volumes for accumulo and its write ahead logs. Replace the defaule instance volumes at the top
     ## with the example below. Make sure the volumes match the general.custom.volume.preferred.default, and
     ## general.custom.volume.preferred.logger property values below
-    instance.volumes=s3a://{{ .Values.s3.bucket }}/accumulo,s3a://{{ .Values.s3.bucket }}/accumulo-wal
+    instance.volumes=s3a://{{ .Values.s3.bucket }}/accumulo,file:/{{ .Values.s3.bucket }}/accumulo-wal
 
     ## Define the S3 objects to use for recording accumulo and write ahead log data
     general.custom.volume.preferred.default=s3a://{{ .Values.s3.bucket }}/accumulo
-    general.custom.volume.preferred.logger=s3a://{{ .Values.s3.bucket }}/accumulo-wal
+    general.custom.volume.preferred.logger=file:/{{ .Values.s3.bucket }}/accumulo-wal
 
     ## The default deployment will use a RandomVolumeChooser and HadoopLogCloser and neither of which work when deploying to
     ## S3. Remove the comments below to use the volume chooser and log closer that are compatible with S3
     general.volume.chooser=org.apache.accumulo.core.spi.fs.PreferredVolumeChooser
-    manager.walog.closer.implementation=org.apache.accumulo.server.manager.recovery.S3LogCloser
+    manager.walog.closer.implementation=org.apache.accumulo.server.manager.recovery.NoOpLogCloser
 
   accumulo-client.properties: |
     instance.name={{ .Values.accumulo.instance_name }}
@@ -161,14 +161,38 @@ data:
         </property>
     </configuration>
 
+  log4j2.properties: |
+    status = info
+    dest = err
+    name = AccumuloDefaultLoggingProperties
+    monitorInterval = 30
+
+    appender.console.type = Console
+    appender.console.name = STDERR
+    appender.console.target = SYSTEM_ERR
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = %style{%d{ISO8601}}{dim,cyan} %style{[}{red}%style{%C}{dim,blue}%style{]}{red} %highlight{%-5p}%style{:}{red} %m%n
+
+    logger.shellaudit.name = org.apache.accumulo.shell.Shell.audit
+    logger.shellaudit.level = warn
+
+    logger.zookeeper.name = org.apache.zookeeper
+    logger.zookeeper.level = error
+
+    rootLogger.level = info
+    rootLogger.appenderRef.console.ref = STDERR
+
   bootstrap.sh: |
     #!/bin/bash
 
     # Directory to find config artifacts
     CONFIG_DIR="/tmp/accumulo-config"
 
+    # delete the old log4j properties file before replacing it with our own
+    mv /opt/accumulo/conf/log4j2.properties /opt/accumulo/conf/log4j2.properties.orig
+
     # Copy accumulo config files from volume mount
-    for f in accumulo.properties accumulo-env.sh accumulo-client.properties core-site.xml; do
+    for f in accumulo.properties accumulo-env.sh accumulo-client.properties core-site.xml log4j2.properties; do
       if [[ -e ${CONFIG_DIR}/$f ]]; then
         cp ${CONFIG_DIR}/$f /opt/accumulo/conf/$f
       else
@@ -225,12 +249,15 @@ data:
     # only run init container once even with multiple managers, so on the first manager pod only
     if [[ "${HOSTNAME}" =~ "accumulo-manager-0" ]]; then
       if {{ .Values.accumulo.init }}; then
+        rm -rf /{{ .Values.s3.bucket }}/accumulo-wal/*
         $ACCUMULO_HOME/bin/accumulo init \
         --force \
         --clear-instance-name \
         --instance-name {{ .Values.accumulo.instance_name }} \
         --password {{ .Values.accumulo.passwd }} \
         --user {{ .Values.accumulo.username }}
+        sleep 2
+        ls -lah /{{ .Values.s3.bucket }}/accumulo-wal/
       fi
     fi
 
