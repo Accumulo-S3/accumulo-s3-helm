@@ -40,6 +40,8 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: s3a-buffer
+          mountPath: /s3a
       containers:
       - name: accumulo-ts
         image: {{ .Values.accumuloImage }}
