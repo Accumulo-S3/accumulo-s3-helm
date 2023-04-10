@@ -62,10 +62,13 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: s3a-buffer
+          mountPath: /s3a
       volumes:
       - name: accumulo-config
         configMap:
           name: accumulo-configmap
+          defaultMode: 0777
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -78,3 +81,12 @@ spec:
                       values:
                         - {{ template "accumulo.fullname" . }}-ts
                 topologyKey: kubernetes.io/hostname
+  volumeClaimTemplates:
+  - metadata:
+      name: s3a-buffer
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: gp2
+      resources:
+        requests:
+          storage: 2Gi

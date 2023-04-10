@@ -74,7 +74,7 @@ data:
 
   accumulo.properties: |
     ## Sets location of Zookeepers
-    instance.zookeeper.host={{ .Values.zookeeper.host }}:{{ .Values.zookeeper.port }}
+    instance.zookeeper.host={{ .Values.zookeeper.host }}
 
     ## Change secret before initialization. All Accumulo servers must have same secret
     instance.secret=DEFAULT
@@ -95,7 +95,29 @@ data:
     ## The default deployment will use a RandomVolumeChooser and HadoopLogCloser and neither of which work when deploying to
     ## S3. Remove the comments below to use the volume chooser and log closer that are compatible with S3
     general.volume.chooser=org.apache.accumulo.core.spi.fs.PreferredVolumeChooser
-    manager.walog.closer.implementation=org.apache.accumulo.server.manager.recovery.S3LogCloser
+    manager.wal.closer.implementation=org.apache.accumulo.server.manager.recovery.NoOpLogCloser
+    tserver.wal.sync=false
+
+  log4j2.properties: |
+     status = info
+     dest = err
+     name = AccumuloDefaultLoggingProperties
+     monitorInterval = 30
+
+     appender.console.type = Console
+     appender.console.name = STDERR
+     appender.console.target = SYSTEM_ERR
+     appender.console.layout.type = PatternLayout
+     appender.console.layout.pattern = %style{%d{ISO8601}}{dim,cyan} %style{[}{red}%style{%C}{dim,blue}%style{]}{red} %highlight{%-5p}%style{:}{red} %m%n
+
+     logger.shellaudit.name = org.apache.accumulo.shell.Shell.audit
+     logger.shellaudit.level = warn
+
+     logger.zookeeper.name = org.apache.zookeeper
+     logger.zookeeper.level = error
+
+     rootLogger.level = debug
+     rootLogger.appenderRef.console.ref = STDERR
 
   accumulo-client.properties: |
     instance.name={{ .Values.accumulo.instance_name }}
@@ -156,10 +178,20 @@ data:
         {{- end -}}
 
         <property>
+          <name>fs.s3a.buffer.dir</name>
+          <value>/s3a</value>
+        </property>
+
+        <property>
             <name>fs.s3a.connection.ssl.enabled</name>
             <value>{{ .Values.s3.ssl_enabled }}</value>
         </property>
     </configuration>
+
+  recover-tserver-pod.sh: |
+    #! /usr/bin/env bash
+    export CLASSPATH="/opt/accumulo/conf:/opt/accumulo/lib/*:/opt/accumulo/s3lib/*:/opt/zookeeper/*:/opt/zookeeper/lib/*"
+    /usr/local/openjdk-11/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.S3AWalRecovery {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} /s3a accumulo-wal/wal
 
   bootstrap.sh: |
     #!/bin/bash
@@ -167,8 +199,11 @@ data:
     # Directory to find config artifacts
     CONFIG_DIR="/tmp/accumulo-config"
 
+    # delete the old log4j properties file before replacing it with our own
+    mv /opt/accumulo/conf/log4j2.properties /opt/accumulo/conf/log4j2.properties.orig
+
     # Copy accumulo config files from volume mount
-    for f in accumulo.properties accumulo-env.sh accumulo-client.properties core-site.xml; do
+    for f in accumulo.properties accumulo-env.sh accumulo-client.properties core-site.xml log4j2.properties; do
       if [[ -e ${CONFIG_DIR}/$f ]]; then
         cp ${CONFIG_DIR}/$f /opt/accumulo/conf/$f
       else
@@ -181,8 +216,8 @@ data:
     manager_end=$(({{ .Values.accumulo.manager.replicas }} - 1))
     for i in $(seq 0 $manager_end);
       do
-        #echo "{{ template "accumulo.fullname" . }}-manager-$i" >> /opt/accumulo/conf/managers;
-        echo "{{ template "accumulo.fullname" . }}-manager-$i" >> /opt/accumulo/conf/masters;
+        echo "{{ template "accumulo.fullname" . }}-manager-$i" >> /opt/accumulo/conf/managers;
+        #echo "{{ template "accumulo.fullname" . }}-manager-$i" >> /opt/accumulo/conf/masters;
         echo "{{ template "accumulo.fullname" . }}-manager-$i" >> /opt/accumulo/conf/gc;
         echo "{{ template "accumulo.fullname" . }}-manager-$i" >> /opt/accumulo/conf/monitor;
     done
@@ -204,6 +239,7 @@ data:
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
+    /bin/bash /tmp/accumulo-config/recover-tserver-pod.sh
     /opt/accumulo/bin/accumulo tserver
 
   gc.sh: |
@@ -236,6 +272,11 @@ data:
 
   ts-wait.sh: |
     #!/bin/bash
+
+    # when a new data base is being initialized remove any old WAl buffered files
+    if {{ .Values.accumulo.init }}; then
+      rm -rf /s3a/*
+    fi
 
     echo "Waiting for manager on 9999..."
     while ! nc -z {{ template "accumulo.fullname" . }}-manager-0 9999; do
