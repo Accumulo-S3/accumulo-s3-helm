@@ -1,0 +1,17 @@
+{{- if .Values.proxy.enabled -}}
+{{- $name := include "accumulo.name" . }}
+{{- $fullName := include "accumulo.fullname" . }}
+{{- $root := . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-proxy-svc
+spec:
+  ports:
+    - name: proxy-server
+      protocol: TCP
+      port: 42424
+      targetPort: 42424
+  selector:
+    statefulset.kubernetes.io/pod-name: {{ $fullName }}-proxy
+{{- end }}

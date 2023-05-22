@@ -1,0 +1,33 @@
+{{- if .Values.proxy.enabled -}}
+{{- $name := include "accumulo.name" . }}
+{{- $fullName := include "accumulo.fullname" . }}
+{{- $replicaCount := .Values.accumulo.manager.replicas | int }}
+{{- $root := . }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ template "accumulo.fullname" . }}-proxy
+  labels:
+    app: {{ template "accumulo.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    component: accumulo-proxy
+spec:
+  containers:
+    - name: accumulo-proxy
+      image: {{ $root.Values.proxy.image }}
+      imagePullPolicy: {{ .Values.imagePullPolicy }}
+      command:
+        - "/bin/bash"
+        - "/tmp/accumulo-config/proxy.sh"
+      volumeMounts:
+        - name: accumulo-config
+          mountPath: /tmp/accumulo-config
+  volumes:
+    - name: accumulo-config
+      configMap:
+        name: accumulo-configmap
+        defaultMode: 0777
+---
+{{- end }}

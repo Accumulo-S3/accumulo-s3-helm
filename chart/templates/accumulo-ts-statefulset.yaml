@@ -21,14 +21,11 @@ spec:
         release: {{ .Release.Name }}
         component: accumulo-ts
     spec:
-      dnsConfig:
-        searches:
-        - {{ template "accumulo.fullname" . }}-ts-svc.{{ .Release.Namespace }}.svc.cluster.local
       affinity:
       terminationGracePeriodSeconds: 0
       initContainers:
       - name: accumulo-ts-wait
-        image: {{ .Values.accumuloImage }}
+        image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         command:
         - "/bin/bash"
@@ -44,7 +41,7 @@ spec:
           mountPath: /s3a
       containers:
       - name: accumulo-ts
-        image: {{ .Values.accumuloImage }}
+        image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID

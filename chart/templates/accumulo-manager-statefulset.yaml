@@ -22,14 +22,11 @@ spec:
         release: {{ .Release.Name }}
         component: accumulo-manager
     spec:
-      dnsConfig:
-        searches:
-        - {{ template "accumulo.fullname" . }}-ts-svc.{{ .Release.Namespace }}.svc.cluster.local
       affinity:
       terminationGracePeriodSeconds: 0
       initContainers:
       - name: accumulo-init
-        image: {{ .Values.accumuloImage }}
+        image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
@@ -49,7 +46,7 @@ spec:
       containers:
       # manager
       - name: accumulo-manager
-        image: {{ .Values.accumuloImage }}
+        image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
@@ -71,7 +68,7 @@ spec:
           mountPath: /tmp/accumulo-config
       # monitor
       - name: accumulo-monitor
-        image: {{ .Values.accumuloImage }}
+        image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
@@ -93,7 +90,7 @@ spec:
           mountPath: /tmp/accumulo-config
       # garbage collector
       - name: accumulo-gc
-        image: {{ .Values.accumuloImage }}
+        image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID

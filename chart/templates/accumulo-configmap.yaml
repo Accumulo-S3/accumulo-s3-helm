@@ -170,7 +170,7 @@ data:
         </property>
         {{- end -}}
 
-        {{- if .Values.s3.endpoint -}}
+        {{- if .Values.s3.path_style_access -}}
         <property>
           <name>fs.s3a.path.style.access</name>
           <value>{{ .Values.s3.path_style_access }}</value>
@@ -283,3 +283,48 @@ data:
       sleep 0.1 # wait for 1/10 of the second before check again
     done
 
+  proxy.sh: |
+    #!/bin/bash
+
+    # Directory to find config artifacts
+    CONFIG_DIR="/tmp/accumulo-config"
+
+    # delete the old log4j properties file before replacing it with our own
+    mv /opt/accumulo/conf/log4j2.properties /opt/accumulo/conf/log4j2.properties.orig
+
+    # Copy accumulo config files from volume mount
+    for f in accumulo.properties accumulo-client.properties core-site.xml log4j2.properties; do
+      if [[ -e ${CONFIG_DIR}/$f ]]; then
+        cp ${CONFIG_DIR}/$f /opt/accumulo/conf/$f
+      else
+        echo "ERROR: Could not find $f in $CONFIG_DIR"
+        exit 1
+      fi
+    done
+
+    echo "Waiting for manager on 9999..."
+    while ! nc -z {{ template "accumulo.fullname" . }}-manager-0 9999; do
+      sleep 0.1 # wait for 1/10 of the second before check again
+    done
+
+    cd /opt/accumulo-proxy
+    /opt/accumulo-proxy/bin/accumulo-proxy -p /tmp/accumulo-config/proxy.properties
+
+  proxy.properties: |
+    ###############################
+    ## Accumulo Proxy configuration
+    ###############################
+    port=42424
+    sharedSecret=sharedSecret
+    useMiniAccumulo=false
+    protocolFactory=org.apache.thrift.protocol.TCompactProtocol$Factory
+    tokenClass=org.apache.accumulo.core.client.security.tokens.PasswordToken
+    maxFrameSize=16M
+    ################################
+    ## Accumulo client configuration
+    ################################
+    auth.type=password
+    auth.principal={{ .Values.accumulo.username }}
+    auth.token={{ .Values.accumulo.passwd }}
+    instance.name={{ .Values.accumulo.instance_name }}
+    instance.zookeepers={{ .Values.zookeeper.host }}

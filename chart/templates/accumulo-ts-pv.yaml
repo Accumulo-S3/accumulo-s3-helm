@@ -4,7 +4,7 @@
 {{- $root := . }}
 
 {{- range $i, $e := until $replicaCount }}
-{{- $targetPod := printf "s3a-buffer-%d" $i }}
+{{- $targetPod := printf "s3a-buffer-%s-ts-%d" $name $i }}
 {{- $_ := set $ "targetPod" $targetPod }}
 apiVersion: v1
 kind: PersistentVolume

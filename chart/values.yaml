@@ -1,7 +1,5 @@
 # The base accumulo image to use for all components.
-accumuloImage: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.0
 imagePullPolicy: Always
-
 externalAccess:
   enabled: false
   service:
@@ -14,14 +12,18 @@ s3:
   key:
   secret: 
   token: 
-  endpoint:
+  endpoint: https://s3.us-east-2.amazonaws.com
   path_style_access: 
   ssl_enabled: true
 ingress:
   enabled: false
-  dn:
+  dn: "mydn.com"
   path: /
+proxy:
+  image: public.ecr.aws/o1d3y8h1/accumulo-proxy:2.1.0
+  enabled: false
 accumulo:
+  image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.0
   # run the init script on startup
   init: false
   gc:
@@ -47,19 +49,21 @@ accumulo:
     javaOpts:
       memory: "'-Xmx768m' '-Xms768m'"
   tserver:
-    replicas: 5
+    replicas: 3
     resources:
       requests:
         memory: "2Gi"
         cpu: 2
     javaOpts:
       memory: "'-Xmx1536m' '-Xms1536m'"
+  proxy:
+    replicas: 1
   username: "root"
   passwd: "root"
-  instance_name: "s3"
+  instance_name: "test"
 
 zookeeper:
-  host: zookeeper
+  host: "zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local:2181,zookeeper-1.zookeeper-headless.accumulo.svc.cluster.local:2181,zookeeper-2.zookeeper-headless.accumulo.svc.cluster.local:2181"
   port: 2181
   containerPort: 2888
   electionPort: 3888
