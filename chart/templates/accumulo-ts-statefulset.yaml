@@ -21,7 +21,6 @@ spec:
         release: {{ .Release.Name }}
         component: accumulo-ts
     spec:
-      affinity:
       terminationGracePeriodSeconds: 0
       initContainers:
       - name: accumulo-ts-wait
@@ -80,6 +79,14 @@ spec:
                       values:
                         - {{ template "accumulo.fullname" . }}-ts
                 topologyKey: kubernetes.io/hostname
+      tolerations:
+        - key: node.kubernetes.io/not-ready
+          effect: NoExecute
+          tolerationSeconds: {{ .Values.accumulo.tserver.tolerations.not_ready }}
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: {{ .Values.accumulo.tserver.tolerations.unreachable }}
   volumeClaimTemplates:
   - metadata:
       name: s3a-buffer

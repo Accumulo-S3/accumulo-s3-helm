@@ -42,6 +42,9 @@ accumulo:
         cpu: 2
     javaOpts:
       memory: "'-Xmx4g' '-Xms4g'"
+    tolerations:
+      not_ready: 30
+      unreachable: 30
   monitor:
     resources:
       requests:
@@ -61,6 +64,9 @@ accumulo:
       storageClass:
         name:
       size: 2Gi
+    tolerations:
+      not_ready: 30
+      unreachable: 30
   proxy:
     replicas: 1
   username: "root"
