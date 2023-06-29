@@ -20,7 +20,7 @@ spec:
       labels:
         app: {{ template "accumulo.name" . }}
         release: {{ .Release.Name }}
-        component: accumulo-manager
+        component: {{ template "accumulo.fullname" . }}-manager
     spec:
       affinity:
       terminationGracePeriodSeconds: 0

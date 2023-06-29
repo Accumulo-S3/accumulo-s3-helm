@@ -191,7 +191,7 @@ data:
   recover-tserver-pod.sh: |
     #! /usr/bin/env bash
     export CLASSPATH="/opt/accumulo/conf:/opt/accumulo/lib/*:/opt/accumulo/s3lib/*:/opt/zookeeper/*:/opt/zookeeper/lib/*"
-    /usr/local/openjdk-11/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.S3AWalRecovery {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} /s3a accumulo-wal/wal
+    /usr/local/openjdk-11/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.S3AWalRecovery {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} /s3a accumulo-wal/wal {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }}
 
   bootstrap.sh: |
     #!/bin/bash
@@ -258,28 +258,32 @@ data:
     #!/bin/bash
 
     /bin/bash /tmp/accumulo-config/bootstrap.sh
+    
     # only run init container once even with multiple managers, so on the first manager pod only
     if [[ "${HOSTNAME}" =~ "accumulo-manager-0" ]]; then
-      if {{ .Values.accumulo.init }}; then
+      echo "preparing the s3 bucket..."
+      export CLASSPATH="/opt/accumulo/conf:/opt/accumulo/lib/*:/opt/accumulo/s3lib/*:/opt/zookeeper/*:/opt/zookeeper/lib/*"
+      /usr/local/openjdk-11/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.PrepBucketForInit {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} {{ .Values.accumulo.init.force }} {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }}
+    
+      read bucket_obj_count < "/tmp/accumulo_bucket_objects"
+      if [[ "$bucket_obj_count" == 0 ]]; then
+        echo "The S3 bucket is empty, so accumulo will begin initializing..."
         $ACCUMULO_HOME/bin/accumulo init \
         --force \
         --clear-instance-name \
         --instance-name {{ .Values.accumulo.instance_name }} \
         --password {{ .Values.accumulo.passwd }} \
         --user {{ .Values.accumulo.username }}
+      else
+        echo "The S3 bucket was previously initialized, so accumulo will begin starting up from it's previous state..."
       fi
     fi
 
   ts-wait.sh: |
     #!/bin/bash
 
-    # when a new data base is being initialized remove any old WAl buffered files
-    if {{ .Values.accumulo.init }}; then
-      rm -rf /s3a/*
-    fi
-
     echo "Waiting for manager on 9999..."
-    while ! nc -z {{ template "accumulo.fullname" . }}-manager-0 9999; do
+    while [ ! nc -z {{ template "accumulo.fullname" . }}-manager-0 9999 ] && [ ! nc -z {{ template "accumulo.fullname" . }}-manager-1 9999 ] ; do
       sleep 0.1 # wait for 1/10 of the second before check again
     done
 

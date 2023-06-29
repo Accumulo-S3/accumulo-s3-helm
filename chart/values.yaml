@@ -10,10 +10,10 @@ externalAccess:
 s3:
   bucket: "accumulo"
   key:
-  secret: 
+  secret:
   token: 
   endpoint: https://s3.us-east-2.amazonaws.com
-  path_style_access: 
+  path_style_access: false
   ssl_enabled: true
 ingress:
   enabled: false
@@ -25,7 +25,8 @@ proxy:
 accumulo:
   image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.0
   # run the init script on startup
-  init: false
+  init:
+    force: false
   gc:
     resources:
       requests:
@@ -49,21 +50,24 @@ accumulo:
     javaOpts:
       memory: "'-Xmx768m' '-Xms768m'"
   tserver:
-    replicas: 3
+    replicas: 1
     resources:
       requests:
         memory: "2Gi"
         cpu: 2
     javaOpts:
       memory: "'-Xmx1536m' '-Xms1536m'"
+    buffer:
+      storageClass:
+        name:
+      size: 2Gi
   proxy:
     replicas: 1
   username: "root"
   passwd: "root"
   instance_name: "test"
-
 zookeeper:
-  host: "zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local:2181,zookeeper-1.zookeeper-headless.accumulo.svc.cluster.local:2181,zookeeper-2.zookeeper-headless.accumulo.svc.cluster.local:2181"
+  host: "zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local:2181"
   port: 2181
   containerPort: 2888
   electionPort: 3888

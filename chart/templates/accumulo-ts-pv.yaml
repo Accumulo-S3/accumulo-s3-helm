@@ -1,23 +1,23 @@
-{{- $name := include "accumulo.name" . }}
-{{- $fullName := include "accumulo.fullname" . }}
-{{- $replicaCount := .Values.accumulo.tserver.replicas | int }}
-{{- $root := . }}
-
-{{- range $i, $e := until $replicaCount }}
-{{- $targetPod := printf "s3a-buffer-%s-ts-%d" $name $i }}
-{{- $_ := set $ "targetPod" $targetPod }}
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: {{ $targetPod }}
-spec:
-  capacity:
-    storage: 2Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: gp2
-  hostPath:
-    path: /s3a
----
-{{- end }}
+#{{- $name := include "accumulo.name" . }}
+#{{- $fullName := include "accumulo.fullname" . }}
+#{{- $replicaCount := .Values.accumulo.tserver.replicas | int }}
+#{{- $root := . }}
+#
+#{{- range $i, $e := until $replicaCount }}
+#{{- $targetPod := printf "s3a-buffer-%s-ts-%d" $name $i }}
+#{{- $_ := set $ "targetPod" $targetPod }}
+#apiVersion: v1
+#kind: PersistentVolume
+#metadata:
+#  name: {{ $targetPod }}
+#spec:
+#  capacity:
+#    storage: 2Gi
+#  accessModes:
+#    - ReadWriteOnce
+#  persistentVolumeReclaimPolicy: Retain
+#  storageClassName: gp2
+#  hostPath:
+#    path: /s3a
+#---
+#{{- end }}

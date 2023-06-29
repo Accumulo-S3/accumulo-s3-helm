@@ -85,7 +85,8 @@ spec:
       name: s3a-buffer
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: gp2
+      storageClassName: {{ .Values.accumulo.tserver.buffer.storageClass.name }}
       resources:
         requests:
-          storage: 2Gi
+          storage: {{ .Values.accumulo.tserver.buffer.size }}
+      volumeMode: Filesystem
