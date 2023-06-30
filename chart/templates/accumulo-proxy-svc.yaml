@@ -1,17 +1,37 @@
 {{- if .Values.proxy.enabled -}}
 {{- $name := include "accumulo.name" . }}
 {{- $fullName := include "accumulo.fullname" . }}
+{{- $replicaCount := .Values.accumulo.proxy.replicas | int }}
 {{- $root := . }}
+
+{{- range $i, $e := until $replicaCount }}
+{{- $targetPod := printf "%s-proxy-%d" (printf "%s" $fullName) $i }}
+{{- $_ := set $ "targetPod" $targetPod }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $fullName }}-proxy-svc
+    name: {{ $targetPod }}
+    labels:
+        app: {{ $name }}
+        chart: {{ $root.Chart.Name }}-{{ $root.Chart.Version | replace "+" "_" }}
+        release: {{ $root.Release.Name }}
+        heritage: {{ $root.Release.Service }}
+        pod: {{ $targetPod }}
+        component: {{ $fullName }}-proxy
 spec:
-  ports:
-    - name: proxy-server
-      protocol: TCP
-      port: 42424
-      targetPort: 42424
-  selector:
-    statefulset.kubernetes.io/pod-name: {{ $fullName }}-proxy
+    ipFamilies:
+        - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+      - name: proxy-server
+        protocol: TCP
+        port: 42424
+        targetPort: 42424
+    selector:
+        statefulset.kubernetes.io/pod-name: {{ $targetPod }}
+    sessionAffinity: None
+status:
+    loadBalancer: {}
+---
+{{- end }}
 {{- end }}

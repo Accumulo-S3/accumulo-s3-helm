@@ -1,33 +1,47 @@
 {{- if .Values.proxy.enabled -}}
 {{- $name := include "accumulo.name" . }}
 {{- $fullName := include "accumulo.fullname" . }}
-{{- $replicaCount := .Values.accumulo.manager.replicas | int }}
+#{{- $replicaCount := .Values.accumulo.proxy.replicas | int }}
 {{- $root := . }}
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
-  name: {{ template "accumulo.fullname" . }}-proxy
+  name: {{ $fullName }}-proxy
   labels:
-    app: {{ template "accumulo.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
-    component: accumulo-proxy
+    app: {{ $name }}
+    chart: {{ $root.Chart.Name }}-{{ $root.Chart.Version | replace "+" "_" }}
+    release: {{ $root.Release.Name }}
+    heritage: {{ $root.Release.Service }}
+    pod: {{ $fullName }}-proxy
+    component: {{ $fullName }}-proxy
 spec:
-  containers:
-    - name: accumulo-proxy
-      image: {{ $root.Values.proxy.image }}
-      imagePullPolicy: {{ .Values.imagePullPolicy }}
-      command:
-        - "/bin/bash"
-        - "/tmp/accumulo-config/proxy.sh"
-      volumeMounts:
+  replicas: {{ .Values.accumulo.proxy.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $fullName }}
+      component: {{ $fullName }}-proxy
+  serviceName: {{ $fullName }}-proxy
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}
+        release: {{ .Release.Name }}
+        component: {{ $fullName }}-proxy
+    spec:
+      containers:
+        - name: accumulo-proxy
+          image: {{ $root.Values.proxy.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - "/bin/bash"
+            - "/tmp/accumulo-config/proxy.sh"
+          volumeMounts:
+            - name: accumulo-config
+              mountPath: /tmp/accumulo-config
+      volumes:
         - name: accumulo-config
-          mountPath: /tmp/accumulo-config
-  volumes:
-    - name: accumulo-config
-      configMap:
-        name: accumulo-configmap
-        defaultMode: 0777
+          configMap:
+            name: accumulo-configmap
+            defaultMode: 0777
 ---
 {{- end }}

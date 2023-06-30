@@ -21,11 +21,12 @@ ingress:
   path: /
 proxy:
   image: public.ecr.aws/o1d3y8h1/accumulo-proxy:2.1.0
-  enabled: false
+  enabled: true
 accumulo:
   image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.0
-  # run the init script on startup
   init:
+    # changing this property in the yaml file is discouraged. set this value at launch from the command line
+    # `--set accumulo.init.force=true`
     force: false
   gc:
     resources:
@@ -53,7 +54,7 @@ accumulo:
     javaOpts:
       memory: "'-Xmx768m' '-Xms768m'"
   tserver:
-    replicas: 1
+    replicas: 3
     resources:
       requests:
         memory: "2Gi"
