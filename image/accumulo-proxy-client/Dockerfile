@@ -1,11 +1,11 @@
-FROM amazoncorretto:11.0.20-alpine3.18
+FROM openjdk:11
 
-RUN apk update; \
-    apk add iproute2 gcc g++ make wget netcat-openbsd vim bash;
+RUN apt update; \
+    apt install -y iproute2 build-essential wget netcat vim;
 
 ENV ACCUMULO_VERSION=2.1.1
 ENV HADOOP_VERSION=3.3.5
-ENV ZOOKEEPER_VERSION=3.8.2
+ENV ZOOKEEPER_VERSION=3.8.1
 ENV ACCUMULO_HOME=/opt/accumulo
 ENV HADOOP_HOME=/opt/accumulo
 ENV ZOOKEEPER_HOME=/opt/zookeeper
