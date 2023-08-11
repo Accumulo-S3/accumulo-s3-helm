@@ -12,7 +12,7 @@ s3:
   key:
   secret:
   token: 
-  endpoint: https://s3.us-east-2.amazonaws.com
+  endpoint: s3.us-east-2.amazonaws.com
   path_style_access: false
   ssl_enabled: true
 ingress:
@@ -20,10 +20,10 @@ ingress:
   dn: "mydn.com"
   path: /
 proxy:
-  image: public.ecr.aws/o1d3y8h1/accumulo-proxy:2.1.0
-  enabled: true
+  image: public.ecr.aws/o1d3y8h1/accumulo-proxy:2.1.1
+  enabled: false
 accumulo:
-  image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.0
+  image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.1-jdk11.0.20
   init:
     # changing this property in the yaml file is discouraged. set this value at launch from the command line
     # `--set accumulo.init.force=true`
@@ -69,7 +69,8 @@ accumulo:
       not_ready: 30
       unreachable: 30
   proxy:
-    replicas: 1
+    root:
+      replicas: 1
   username: "root"
   passwd: "root"
   instance_name: "test"
@@ -79,3 +80,5 @@ zookeeper:
   containerPort: 2888
   electionPort: 3888
   replicas: 3
+log:
+  level: info

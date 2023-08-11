@@ -116,7 +116,7 @@ data:
      logger.zookeeper.name = org.apache.zookeeper
      logger.zookeeper.level = error
 
-     rootLogger.level = debug
+     rootLogger.level = {{ .Values.log.level }}
      rootLogger.appenderRef.console.ref = STDERR
 
   accumulo-client.properties: |
@@ -191,7 +191,7 @@ data:
   recover-tserver-pod.sh: |
     #! /usr/bin/env bash
     export CLASSPATH="/opt/accumulo/conf:/opt/accumulo/lib/*:/opt/accumulo/s3lib/*:/opt/zookeeper/*:/opt/zookeeper/lib/*"
-    /usr/local/openjdk-11/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.S3AWalRecovery {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} /s3a accumulo-wal/wal {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }}
+    /usr/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.S3AWalRecovery {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} /s3a accumulo-wal/wal {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }}
 
   bootstrap.sh: |
     #!/bin/bash
@@ -263,7 +263,7 @@ data:
     if [[ "${HOSTNAME}" =~ "accumulo-manager-0" ]]; then
       echo "preparing the s3 bucket..."
       export CLASSPATH="/opt/accumulo/conf:/opt/accumulo/lib/*:/opt/accumulo/s3lib/*:/opt/zookeeper/*:/opt/zookeeper/lib/*"
-      /usr/local/openjdk-11/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.PrepBucketForInit {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} {{ .Values.accumulo.init.force }} {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }}
+      /usr/bin/java -Daccumulo.log.dir=/opt/accumulo/logs -Daccumulo.application=manager_accumulo-ts-0 -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.PrepBucketForInit {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} {{ .Values.accumulo.init.force }} {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }}
     
       read bucket_obj_count < "/tmp/accumulo_bucket_objects"
       if [[ "$bucket_obj_count" == 0 ]]; then
@@ -282,10 +282,25 @@ data:
   ts-wait.sh: |
     #!/bin/bash
 
-    echo "Waiting for manager on 9999..."
-    while [ ! nc -z {{ template "accumulo.fullname" . }}-manager-0 9999 ] && [ ! nc -z {{ template "accumulo.fullname" . }}-manager-1 9999 ] ; do
-      sleep 0.1 # wait for 1/10 of the second before check again
+    while ! (nc -vz {{ template "accumulo.fullname" . }}-manager-0 9999 || nc -vz {{ template "accumulo.fullname" . }}-manager-1 9999) ; do
+      echo "waiting for manager service..."
+      sleep 0.5s
     done
+
+  tserver-shutdown.sh: |
+    #!/bin/bash
+    
+    echo "Gracefully shutting down..."
+    hostname=$(hostname -s)
+    timeout 50s /opt/accumulo/bin/accumulo admin stop $hostname >& /proc/1/fd/1
+    
+    # if the stop command times out kill the matching pid, so we have time to flush files to s3 before the grace period ends
+    kill -9 $(ps aux | grep "org.apache.accumulo.start.Main tserver" | grep -v grep | awk '{print $1}')
+    
+    export CLASSPATH="/opt/accumulo/conf:/opt/accumulo/lib/*:/opt/accumulo/s3lib/*:/opt/zookeeper/*:/opt/zookeeper/lib/*"
+    /usr/bin/java -Dlog4j.configurationFile=log4j2-service.properties org.apache.accumulo.utilities.S3AWalRecovery {{ .Values.s3.endpoint }} {{ .Values.s3.bucket }} /s3a accumulo-wal/wal {{ .Values.s3.ssl_enabled }} {{ .Values.s3.path_style_access }} >& /proc/1/fd/1
+    echo "Graceful shutdown complete."
+    sleep 1s
 
   proxy.sh: |
     #!/bin/bash
