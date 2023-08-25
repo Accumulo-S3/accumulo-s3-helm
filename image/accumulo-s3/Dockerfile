@@ -3,7 +3,7 @@ FROM amazoncorretto:11.0.20-alpine3.18
 RUN apk update; \
     apk add iproute2 gcc g++ make wget netcat-openbsd vim bash;
 
-ENV ACCUMULO_VERSION=2.1.1
+ENV ACCUMULO_VERSION=2.1.2
 ENV HADOOP_VERSION=3.3.5
 ENV ZOOKEEPER_VERSION=3.8.2
 ENV ACCUMULO_HOME=/opt/accumulo
