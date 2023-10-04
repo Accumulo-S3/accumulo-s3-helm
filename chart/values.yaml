@@ -8,11 +8,11 @@ externalAccess:
     - 30995
     - 30996
 s3:
-  bucket: "accumulo"
+  bucket: "test-accumulo"
   key:
   secret:
   token: 
-  endpoint: s3.us-east-2.amazonaws.com
+  endpoint: s3.us-east-1.amazonaws.com
   path_style_access: false
   ssl_enabled: true
 ingress:
