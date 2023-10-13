@@ -77,7 +77,7 @@ data:
     instance.zookeeper.host={{ .Values.zookeeper.host }}
 
     ## Change secret before initialization. All Accumulo servers must have same secret
-    instance.secret=DEFAULT
+    instance.secret=${INSTANCESECRET}
 
     ## Set to false if 'accumulo-util build-native' fails
     tserver.memory.maps.native.enabled=true
@@ -124,8 +124,8 @@ data:
     instance.zookeepers={{ .Values.zookeeper.host }}
     #instance.zookeepers.timeout=30s
     auth.type=password
-    auth.principal={{ .Values.accumulo.username }}
-    auth.token={{ .Values.accumulo.passwd }}
+    auth.principal=${ROOT_USER}
+    auth.token=${ROOT_PASSWD}
 
   core-site.xml: |
     <configuration>
@@ -145,21 +145,21 @@ data:
         {{- if .Values.s3.key -}}
         <property>
             <name>fs.s3a.access.key</name>
-            <value>{{ .Values.s3.key }}</value>
+            <value>${S3KEY}</value>
         </property>
         {{- end -}}
 
         {{- if .Values.s3.secret -}}
         <property>
             <name>fs.s3a.secret.key</name>
-            <value>{{ .Values.s3.secret }}</value>
+            <value>${S3SECRET}</value>
         </property>
         {{- end -}}
 
         {{- if .Values.s3.token -}}
         <property>
             <name>fs.s3a.session.token</name>
-            <value>{{ .Values.s3.token }}</value>
+            <value>${S3TOKEN}</value>
         </property>
         {{- end -}}
 
@@ -202,10 +202,16 @@ data:
     # delete the old log4j properties file before replacing it with our own
     mv /opt/accumulo/conf/log4j2.properties /opt/accumulo/conf/log4j2.properties.orig
 
-    # Copy accumulo config files from volume mount
+    # Copy accumulo config files from volume mount. Chain sed commands first escape slashes, then replace with secrets
     for f in accumulo.properties accumulo-env.sh accumulo-client.properties core-site.xml log4j2.properties; do
       if [[ -e ${CONFIG_DIR}/$f ]]; then
         cp ${CONFIG_DIR}/$f /opt/accumulo/conf/$f
+        sed -i "s/\${INSTANCESECRET}/$(cat /tmp/accumulo-secret/accumulo-instance-secret | sed 's#/#\\/#g')/" /opt/accumulo/conf/$f
+        sed -i "s/\${ROOT_USER}/$(cat /tmp/accumulo-secret/accumulo-root-user | sed 's#/#\\/#g')/" /opt/accumulo/conf/$f
+        sed -i "s/\${ROOT_PASSWD}/$(cat /tmp/accumulo-secret/accumulo-root-passwd | sed 's#/#\\/#g')/" /opt/accumulo/conf/$f
+        sed -i "s/\${S3KEY}/$(cat /tmp/accumulo-secret/s3-key | sed 's#/#\\/#g')/" /opt/accumulo/conf/$f
+        sed -i "s/\${S3SECRET}/$(cat /tmp/accumulo-secret/s3-secret | sed 's#/#\\/#g')/" /opt/accumulo/conf/$f
+        sed -i "s/\${S3TOKEN}/$(cat /tmp/accumulo-secret/s3-token | sed 's#/#\\/#g')/" /opt/accumulo/conf/$f
       else
         echo "ERROR: Could not find $f in $CONFIG_DIR"
         exit 1
@@ -272,8 +278,8 @@ data:
         --force \
         --clear-instance-name \
         --instance-name {{ .Values.accumulo.instance_name }} \
-        --password {{ .Values.accumulo.passwd }} \
-        --user {{ .Values.accumulo.username }}
+        --password ${ACCUMULO_ROOT_PASSWD} \
+        --user ${ACCUMULO_ROOT_USER}
       else
         echo "The S3 bucket was previously initialized, so accumulo will begin starting up from it's previous state..."
       fi
@@ -334,7 +340,7 @@ data:
     ## Accumulo Proxy configuration
     ###############################
     port=42424
-    sharedSecret=sharedSecret
+    sharedSecret=${INSTANCESECRET}
     useMiniAccumulo=false
     protocolFactory=org.apache.thrift.protocol.TCompactProtocol$Factory
     tokenClass=org.apache.accumulo.core.client.security.tokens.PasswordToken
@@ -343,7 +349,7 @@ data:
     ## Accumulo client configuration
     ################################
     auth.type=password
-    auth.principal={{ .Values.accumulo.username }}
-    auth.token={{ .Values.accumulo.passwd }}
+    auth.principal=${ROOT_USER}
+    auth.token=${ROOT_PASSWD}
     instance.name={{ .Values.accumulo.instance_name }}
     instance.zookeepers={{ .Values.zookeeper.host }}

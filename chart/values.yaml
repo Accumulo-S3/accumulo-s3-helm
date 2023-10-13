@@ -8,11 +8,11 @@ externalAccess:
     - 30995
     - 30996
 s3:
-  bucket: "test-accumulo"
+  bucket: "accumulo"
   key:
   secret:
   token: 
-  endpoint: s3.us-east-1.amazonaws.com
+  endpoint: s3.us-east-2.amazonaws.com
   path_style_access: false
   ssl_enabled: true
 ingress:
@@ -23,7 +23,7 @@ proxy:
   image: public.ecr.aws/o1d3y8h1/accumulo-proxy:2.1.1
   enabled: false
 accumulo:
-  image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.1-jdk11.0.20
+  image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.2-jdk11.0.20
   init:
     # changing this property in the yaml file is discouraged. set this value at launch from the command line
     # `--set accumulo.init.force=true`
@@ -73,7 +73,8 @@ accumulo:
       replicas: 1
   username: "root"
   passwd: "root"
-  instance_name: "test"
+  instance_name: "test1"
+  instance_secret: DEFAULT
 zookeeper:
   host: "zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local:2181"
   port: 2181

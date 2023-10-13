@@ -29,9 +29,37 @@ spec:
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
-          value: {{ .Values.s3.key }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-key
         - name: AWS_SECRET_ACCESS_KEY
-          value: {{ .Values.s3.secret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-secret
+        {{- if .Values.s3.token -}}
+        - name: AWS_SESSION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-token
+        {{- end }}
+        - name: ACCUMULO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: accumulo-root-user
+        - name: ACCUMULO_ROOT_PASSWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: accumulo-root-passwd
+        - name: ACCUMULO_INSTANCE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: accumulo-instance-secret
         command:
         - "/bin/bash"
         - "/tmp/accumulo-config/init.sh"
@@ -42,6 +70,8 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-secret
+          mountPath: /tmp/accumulo-secret
       containers:
       # manager
       - name: accumulo-manager
@@ -49,9 +79,37 @@ spec:
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
-          value: {{ .Values.s3.key }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-key
         - name: AWS_SECRET_ACCESS_KEY
-          value: {{ .Values.s3.secret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-secret
+        {{- if .Values.s3.token -}}
+        - name: AWS_SESSION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-token
+        {{- end }}
+        - name: ACCUMULO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: accumulo-root-user
+        - name: ACCUMULO_ROOT_PASSWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: accumulo-root-passwd
+        - name: ACCUMULO_INSTANCE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: accumulo-instance-secret
         command:
         - "/bin/bash"
         - "/tmp/accumulo-config/manager.sh"
@@ -65,15 +123,30 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-secret
+          mountPath: /tmp/accumulo-secret
       # monitor
       - name: accumulo-monitor
         image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
-          value: {{ .Values.s3.key }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-key
         - name: AWS_SECRET_ACCESS_KEY
-          value: {{ .Values.s3.secret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-secret
+        {{- if .Values.s3.token -}}
+        - name: AWS_SESSION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-token
+        {{- end }}
         command:
         - "/bin/bash"
         - "/tmp/accumulo-config/monitor.sh"
@@ -87,15 +160,30 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-secret
+          mountPath: /tmp/accumulo-secret
       # garbage collector
       - name: accumulo-gc
         image: {{ .Values.accumulo.image }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         env:
         - name: AWS_ACCESS_KEY_ID
-          value: {{ .Values.s3.key }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-key
         - name: AWS_SECRET_ACCESS_KEY
-          value: {{ .Values.s3.secret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-secret
+        {{- if .Values.s3.token -}}
+        - name: AWS_SESSION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "accumulo.fullname" . }}-secret
+              key: s3-token
+        {{- end }}
         command:
         - "/bin/bash"
         - "/tmp/accumulo-config/gc.sh"
@@ -109,10 +197,15 @@ spec:
         volumeMounts:
         - name: accumulo-config
           mountPath: /tmp/accumulo-config
+        - name: {{ template "accumulo.fullname" . }}-secret
+          mountPath: /tmp/accumulo-secret
       volumes:
       - name: accumulo-config
         configMap:
           name: accumulo-configmap
+      - name: {{ template "accumulo.fullname" . }}-secret
+        secret:
+          secretName: {{ template "accumulo.fullname" . }}-secret
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
