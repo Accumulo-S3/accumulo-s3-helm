@@ -1,18 +1,33 @@
 # The base accumulo image to use for all components.
-accumuloImage: 347653770938.dkr.ecr.us-east-2.amazonaws.com/accumulo-s3:2.0.1
 imagePullPolicy: Always
-
-# Select anitAffinity as either hard or soft, default is hard
-antiAffinity: "soft"
-
+externalAccess:
+  enabled: false
+  service:
+    type: NodePort
+    nodePorts: # The nodePorts list must match the number of manager replicas in the deployment
+    - 30995
+    - 30996
 s3:
-  bucket: "accumulo.s3"
+  bucket: "accumulo"
   key:
   secret:
-
+  token: 
+  endpoint: s3.us-east-2.amazonaws.com
+  path_style_access: false
+  ssl_enabled: true
+ingress:
+  enabled: false
+  dn: "mydn.com"
+  path: /
+proxy:
+  image: public.ecr.aws/o1d3y8h1/accumulo-proxy:2.1.1
+  enabled: false
 accumulo:
-  # run the init script on startup
-  init: false
+  image: public.ecr.aws/o1d3y8h1/accumulo-s3:2.1.2-jdk11.0.20
+  init:
+    # changing this property in the yaml file is discouraged. set this value at launch from the command line
+    # `--set accumulo.init.force=true`
+    force: false
   gc:
     resources:
       requests:
@@ -28,6 +43,9 @@ accumulo:
         cpu: 2
     javaOpts:
       memory: "'-Xmx4g' '-Xms4g'"
+    tolerations:
+      not_ready: 30
+      unreachable: 30
   monitor:
     resources:
       requests:
@@ -36,22 +54,32 @@ accumulo:
     javaOpts:
       memory: "'-Xmx768m' '-Xms768m'"
   tserver:
-    replicas: 5
+    replicas: 3
     resources:
       requests:
         memory: "2Gi"
         cpu: 2
     javaOpts:
       memory: "'-Xmx1536m' '-Xms1536m'"
-  #volumes: "accS3nf://accumulo.s3/accumulo,accS3mo://accumulo.s3/accumulo-wal"
-  volumes: "accS3nf://accumulo.s3/accumulo,accS3nf://accumulo.s3/accumulo-wal"
+    buffer:
+      storageClass:
+        name:
+      size: 2Gi
+    tolerations:
+      not_ready: 30
+      unreachable: 30
+  proxy:
+    root:
+      replicas: 1
   username: "root"
   passwd: "root"
-  instance_name: "s3"
-
+  instance_name: "test1"
+  instance_secret: DEFAULT
 zookeeper:
-  host: zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local,zookeeper-1.zookeeper-headless.accumulo.svc.cluster.local,zookeeper-2.zookeeper-headless.accumulo.svc.cluster.local
+  host: "zookeeper-0.zookeeper-headless.accumulo.svc.cluster.local:2181"
   port: 2181
   containerPort: 2888
   electionPort: 3888
   replicas: 3
+log:
+  level: info

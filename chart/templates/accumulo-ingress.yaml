@@ -1,0 +1,29 @@
+{{- if .Values.ingress.enabled -}}
+{{- $name := include "accumulo.name" . }}
+{{- $fullName := include "accumulo.fullname" . }}
+{{- $replicaCount := .Values.accumulo.manager.replicas | int }}
+{{- $root := . }}
+
+{{- range $i, $e := until $replicaCount }}
+{{- $targetService := printf "%s-manager-%d" (printf "%s" $fullName) $i }}
+{{- $targetName := printf "%s-dashboard-%d" (printf "%s" $fullName) $i }}
+{{- $_ := set $ "targetService" $targetService }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $targetName }}
+spec:
+  rules:
+    - host: {{ $targetService }}.{{ $root.Values.ingress.dn}}
+      http:
+        paths:
+          - path: {{ $root.Values.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $targetService }}
+                port:
+                  number: 9995
+---
+{{- end }}
+{{- end }}

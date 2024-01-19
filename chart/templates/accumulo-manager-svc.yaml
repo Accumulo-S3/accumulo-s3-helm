@@ -1,35 +1,59 @@
-# A headless service to create DNS records
+{{- $name := include "accumulo.name" . }}
+{{- $fullName := include "accumulo.fullname" . }}
+{{- $replicaCount := .Values.accumulo.manager.replicas | int }}
+{{- $root := . }}
+
+{{- range $i, $e := until $replicaCount }}
+{{- $targetPod := printf "%s-manager-%d" (printf "%s" $fullName) $i }}
+{{- $_ := set $ "targetPod" $targetPod }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "accumulo.fullname" . }}-manager-svc
-  labels:
-    app: {{ template "accumulo.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    component: {{ template "accumulo.fullname" . }}-manager
+    name: {{ $targetPod }}
+    labels:
+        app: {{ $name }}
+        chart: {{ $root.Chart.Name }}-{{ $root.Chart.Version | replace "+" "_" }}
+        release: {{ $root.Release.Name }}
+        heritage: {{ $root.Release.Service }}
+        pod: {{ $targetPod }}
+        component: {{ $fullName }}-manager
 spec:
-  ports:
-    - name: master-server
-      protocol: TCP
-      port: 9999
-      targetPort: 9999
-    - name: master-replication
-      protocol: TCP
-      port: 10001
-      targetPort: 10001
-    - name: http-monitor
-      protocol: TCP
-      port: 9995
-      targetPort: 9995
-    - name: monitor
-      protocol: TCP
-      port: 50095
-      targetPort: 50095
-    - name: accumulo-gc
-      protocol: TCP
-      port: 9998
-      targetPort: 9998
-  clusterIP: "None"
-  selector:
-    app: {{ template "accumulo.name" . }}
-    component: accumulo-manager
+    ipFamilies:
+        - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+        - name: ui
+          port: 9995
+          {{- if and ($root.Values.externalAccess.enabled) (eq $root.Values.externalAccess.service.type "NodePort") }}
+          nodePort: {{ index $root.Values.externalAccess.service.nodePorts $i }}
+          {{- end}}
+          protocol: TCP
+          targetPort: 9995
+        - name: master-server
+          protocol: TCP
+          port: 9999
+          targetPort: 9999
+        - name: master-replication
+          protocol: TCP
+          port: 10001
+          targetPort: 10001
+        - name: monitor
+          protocol: TCP
+          port: 50095
+          targetPort: 50095
+        - name: accumulo-gc
+          protocol: TCP
+          port: 9998
+          targetPort: 9998
+    selector:
+        statefulset.kubernetes.io/pod-name: {{ $targetPod }}
+    sessionAffinity: None
+    {{- if and ($root.Values.externalAccess.enabled) (eq $root.Values.externalAccess.service.type "NodePort") }}
+    type: NodePort
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    {{- end}}
+status:
+    loadBalancer: {}
+---
+{{- end }}

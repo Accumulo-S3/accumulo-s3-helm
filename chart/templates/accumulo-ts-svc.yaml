@@ -1,16 +1,15 @@
-# A headless service to create DNS records
+{{- $name := include "accumulo.name" . }}
+{{- $fullName := include "accumulo.fullname" . }}
+{{- $replicaCount := .Values.accumulo.tserver.replicas | int }}
+{{- $root := . }}
+
+{{- range $i, $e := until $replicaCount }}
+{{- $targetName := printf "%s-ts-%d" (printf "%s" $fullName) $i }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "accumulo.fullname" . }}-ts-svc
-  labels:
-    app: {{ template "accumulo.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
-    component: accumulo-ts
+  name: {{ $targetName }}
 spec:
-  clusterIP: "None"
   ports:
     - name: tablet-server
       protocol: TCP
@@ -21,5 +20,6 @@ spec:
       port: 10002
       targetPort: 10002
   selector:
-    app: {{ template "accumulo.name" . }}
-    component: accumulo-ts
+    statefulset.kubernetes.io/pod-name: {{ $targetName }}
+---
+{{- end }}
